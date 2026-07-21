@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { dirname, join, resolve, basename } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CONFIG = {
   schemaVersion: 1,
@@ -193,7 +193,9 @@ function main(argv) {
   console.log(`narrative ${command}: OK`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+// npm/npx expose package bins through a symlink. Compare real paths so the CLI still enters main()
+// when process.argv[1] is that symlink rather than the package file's physical path.
+if (process.argv[1] && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
   try { main(process.argv.slice(2)); }
   catch (error) { console.error(`narrative: ${error.message}`); process.exitCode = 1; }
 }
