@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { createFragment, loadConfig, compile } from "../bin/narrative.mjs";
+import { createFragment, loadConfig, compile, summariseDecision } from "../bin/narrative.mjs";
 
 const token = process.env.INPUT_GITHUB_TOKEN;
 const configPath = process.env.INPUT_CONFIG || ".project-narrative.json";
@@ -55,7 +55,7 @@ if (!context || !decision || !consequences) {
 const config = loadConfig(configPath);
 const date = new Date(pr.merged_at).toISOString().slice(0, 10);
 const slug = slugify(pr.title) || `pull-request-${pr.number}`;
-const summary = decision.split(/\n\n|\n/)[0].replace(/\s+/g, " ").slice(0, config.summaryMaxCharacters);
+const summary = summariseDecision(decision, config.summaryMaxCharacters);
 createFragment(config, {
   date,
   slug,

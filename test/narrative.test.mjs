@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseFragment, render, loadFragments, createFragment } from "../bin/narrative.mjs";
+import { parseFragment, render, loadFragments, createFragment, summariseDecision } from "../bin/narrative.mjs";
 
 const valid = `---
 date: 2026-07-21
@@ -57,4 +57,13 @@ test("makes repeated proposed slugs unique without corrupting metadata", () => {
   const second = createFragment(config, entry);
   assert.match(second, /same-decision-2\.md$/);
   assert.match(readFileSync(second, "utf8"), /slug: same-decision-2/);
+});
+
+test("uses the last complete sentence within the summary limit", () => {
+  const decision = "Enable the welcome message. Use the existing feature-flag artifact because this intentionally long second sentence exceeds the configured summary limit.";
+  assert.equal(summariseDecision(decision, 80), "Enable the welcome message.");
+});
+
+test("falls back to a word-safe ellipsis when no complete sentence fits", () => {
+  assert.equal(summariseDecision("A deliberately long sentence with no early punctuation", 31), "A deliberately long sentence…");
 });
