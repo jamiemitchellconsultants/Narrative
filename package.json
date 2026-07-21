@@ -1,0 +1,17 @@
+{
+  "name": "@jamiemitchellconsultants/narrative",
+  "version": "0.1.0",
+  "description": "A deterministic, review-first project narrative processor for GitHub repositories.",
+  "type": "module",
+  "bin": {
+    "narrative": "bin/narrative.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check bin/narrative.mjs && node --check action/github-action.mjs && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

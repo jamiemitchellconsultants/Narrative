@@ -1,0 +1,39 @@
+name: Project Narrative
+description: Propose and compile an evidence-backed project narrative entry after a pull request merges.
+author: Jamie Mitchell Consultants
+inputs:
+  github-token:
+    description: Token used to create the narrative proposal branch and pull request.
+    required: false
+  mode:
+    description: Use maintain for merged-PR capture or check for deterministic validation.
+    required: false
+    default: maintain
+  config:
+    description: Path to the narrative configuration file.
+    required: false
+    default: .project-narrative.json
+  required-label:
+    description: Only maintain PRs carrying this label. Empty means every merged PR.
+    required: false
+    default: narrative-required
+runs:
+  using: composite
+  steps:
+    - name: Validate project narrative
+      if: inputs.mode == 'check'
+      shell: bash
+      env:
+        INPUT_CONFIG: ${{ inputs.config }}
+      run: node "${{ github.action_path }}/bin/narrative.mjs" check --config "$INPUT_CONFIG"
+    - name: Maintain project narrative
+      if: inputs.mode == 'maintain'
+      shell: bash
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_REQUIRED_LABEL: ${{ inputs.required-label }}
+      run: node "${{ github.action_path }}/action/github-action.mjs"
+branding:
+  icon: book-open
+  color: blue
