@@ -150,6 +150,22 @@ export function createFragment(config, entry) {
   return path;
 }
 
+/** Produce a compact index summary without cutting a sentence or word in half. */
+export function summariseDecision(decision, maxCharacters = DEFAULT_CONFIG.summaryMaxCharacters) {
+  const text = String(decision).replace(/\s+/g, " ").trim();
+  if (text.length <= maxCharacters) return text;
+
+  const candidate = text.slice(0, maxCharacters);
+  const sentences = [...candidate.matchAll(/[.!?](?=\s|$)/g)];
+  if (sentences.length) return candidate.slice(0, sentences.at(-1).index + 1);
+
+  const ellipsis = "…";
+  const clipped = text.slice(0, Math.max(0, maxCharacters - ellipsis.length));
+  const wordBoundary = clipped.lastIndexOf(" ");
+  const safe = wordBoundary > 0 ? clipped.slice(0, wordBoundary) : clipped;
+  return `${safe.replace(/[\s,;:—-]+$/g, "")}${ellipsis}`;
+}
+
 export function init(configPath = ".project-narrative.json") {
   if (!existsSync(configPath)) writeFileSync(configPath, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
   const config = loadConfig(configPath);
