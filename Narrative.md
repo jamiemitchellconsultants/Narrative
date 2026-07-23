@@ -9,13 +9,34 @@ Reviewed fragments are authoritative; this compiled document is their determinis
 
 | # | Date | Title | Kind | Decision summary |
 |---|---|---|---|---|
-| [1](#entry-make-project-narrative-self-hosting) | 2026-07-23 | Make Project Narrative self-hosting | governance | Use Project Narrative's own processor and workflows to maintain a reviewable decision history for the Narrative repository. |
+| [1](#entry-feat-make-project-narrative-self-hosting) | 2026-07-23 | feat: make Project Narrative self-hosting | product | Make Narrative self-hosting. |
+| [2](#entry-make-project-narrative-self-hosting) | 2026-07-23 | Make Project Narrative self-hosting | governance | Use Project Narrative's own processor and workflows to maintain a reviewable decision history for the Narrative repository. |
+
+---
+
+<a id="entry-feat-make-project-narrative-self-hosting"></a>
+
+## Entry 1 — 2026-07-23 — feat: make Project Narrative self-hosting
+
+*Kind: product. Status: accepted.*
+
+## Context
+
+Project Narrative gives consumer repositories a deterministic, review-first decision history, but its own repository did not maintain that history. Processor decisions could therefore merge without the label, explicit evidence, separate proposal, or deterministic validation recommended to consumers. PR #4 established canonical agent instructions and the narrative-required label, but no configuration, accepted record, or workflows existed to enforce the process.
+
+## Decision
+
+Make Narrative self-hosting. Configure its standard paths, create the initial governance fragment and compiled Narrative.md, add the exact Narrative sections to the pull-request template, validate narrative changes with the checked-out local action, and run the checked-out local maintenance action after merged pull requests. Continue to gate capture on narrative-required and keep generated proposals separate and draft until human review.
+
+## Consequences
+
+Future meaningful processor decisions can be captured by the same parser, compiler, evidence headings, label, branch convention, and draft-review flow that Narrative publishes. Mechanical changes remain ignored. Maintainers must review generated proposals and keep authoritative fragments synchronized with Narrative.md. One repository setting remains required before maintenance is operational: Settings → Actions → General must enable Allow GitHub Actions to create and approve pull requests. That setting is currently disabled and is intentionally not changed by this PR.
 
 ---
 
 <a id="entry-make-project-narrative-self-hosting"></a>
 
-## Entry 1 — 2026-07-23 — Make Project Narrative self-hosting
+## Entry 2 — 2026-07-23 — Make Project Narrative self-hosting
 
 *Kind: governance. Status: accepted.*
 
