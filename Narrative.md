@@ -11,6 +11,7 @@ Reviewed fragments are authoritative; this compiled document is their determinis
 |---|---|---|---|---|
 | [1](#entry-feat-make-project-narrative-self-hosting) | 2026-07-23 | feat: make Project Narrative self-hosting | product | Make Narrative self-hosting. |
 | [2](#entry-make-project-narrative-self-hosting) | 2026-07-23 | Make Project Narrative self-hosting | governance | Use Project Narrative's own processor and workflows to maintain a reviewable decision history for the Narrative repository. |
+| [3](#entry-ci-gate-narrative-required-pr-bodies-before-merge) | 2026-07-24 | ci: gate narrative-required PR bodies before merge | product | Add a deterministic pre-merge gate to the existing validation workflow that mirrors the action's `section()` logic and runs on `narrative-required` PRs, triggered on body and label edits. |
 
 ---
 
@@ -67,3 +68,23 @@ dogfoods the same parser, compiler, label, evidence headings, automation branch 
 validation path it publishes. Repository Actions settings must continue to permit the maintenance
 workflow to push branches and create pull requests. Maintainers must review generated proposals and
 keep the compiled document synchronized with authoritative fragments.
+
+---
+
+<a id="entry-ci-gate-narrative-required-pr-bodies-before-merge"></a>
+
+## Entry 3 — 2026-07-24 — ci: gate narrative-required PR bodies before merge
+
+*Kind: product. Status: accepted.*
+
+## Context
+
+The `narrative-required` label promises an explicit decision, but the three required sections were only checked by the post-merge `maintain` action. A labelled PR merged without them fails maintenance after the fact and yields no narrative entry, and the already-merged body can no longer be re-captured.
+
+## Decision
+
+Add a deterministic pre-merge gate to the existing validation workflow that mirrors the action's `section()` logic and runs on `narrative-required` PRs, triggered on body and label edits. Keep it dependency-free and read the untrusted PR body only as data, consistent with the processor's security posture.
+
+## Consequences
+
+Labelled PRs are now blocked at review time until their body carries the three non-empty sections, so the post-merge `maintain` step can no longer fail for a missing heading. Validation now runs on all PR edits, extending the deterministic fragment `check` to PRs that touch no narrative files. This PR dogfoods the new gate against its own body.
