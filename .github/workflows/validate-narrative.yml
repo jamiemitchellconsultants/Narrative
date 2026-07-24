@@ -2,10 +2,7 @@ name: Validate project narrative
 
 on:
   pull_request:
-    paths:
-      - ".project-narrative.json"
-      - "narrative/**"
-      - "Narrative.md"
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -19,3 +16,33 @@ jobs:
         uses: ./
         with:
           mode: check
+
+  require-narrative-sections:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'narrative-required')
+    steps:
+      # Pre-merge mirror of the post-merge maintain gate: a narrative-required PR
+      # body must carry the same non-empty H2 sections the maintain action reads,
+      # so a missing heading fails review instead of silently failing after merge.
+      - name: Require narrative sections in the PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          node - <<'NODE'
+          const body = process.env.PR_BODY || "";
+          const section = (heading) => {
+            const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            return body
+              .match(new RegExp(`(?:^|\\n)##\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`, "i"))?.[1]
+              ?.trim();
+          };
+          const missing = ["Narrative Context", "Narrative Decision", "Narrative Consequences"]
+            .filter((heading) => !section(heading));
+          if (missing.length) {
+            console.error(
+              `::error::narrative-required PR body must contain non-empty '## ' sections: ${missing.join(", ")}`,
+            );
+            process.exit(1);
+          }
+          console.log("All required narrative sections are present.");
+          NODE
