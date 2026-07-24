@@ -37,6 +37,11 @@ Preserve these behaviors unless a reviewed decision explicitly changes them:
 
 - `narrative init` creates missing standard files without overwriting existing configuration or
   preamble content.
+- `narrative install` scaffolds a consumer repository — everything `init` does plus the maintenance
+  and validation workflows and the PR template — without overwriting any existing file, and reports
+  the manual follow-ups (workflow PR permission, the trigger label) it cannot perform. `INSTALL.md`
+  is the agent-facing consumer-install recipe and is distinct from this file, which governs
+  developing the processor.
 - `narrative validate` validates fragment schema and content.
 - `narrative compile` deterministically regenerates the configured output from fragments.
 - `narrative check` fails when fragments are invalid or the compiled output is stale.

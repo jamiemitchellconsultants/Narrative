@@ -177,8 +177,121 @@ export function init(configPath = ".project-narrative.json") {
   compile(configPath);
 }
 
+// The consumer action reference. Pinning a reviewed tag or SHA is stronger supply-chain practice;
+// keep this in one place so a single edit repoints every scaffolded workflow.
+export const ACTION_REF = "jamiemitchellconsultants/Narrative@main";
+export const REQUIRED_LABEL = "narrative-required";
+
+export const SCAFFOLD = {
+  ".github/workflows/maintain-narrative.yml": `name: Maintain project narrative
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  maintain:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ${ACTION_REF}
+        with:
+          github-token: \${{ secrets.GITHUB_TOKEN }}
+          required-label: ${REQUIRED_LABEL}
+`,
+  ".github/workflows/validate-narrative.yml": `name: Validate project narrative
+
+on:
+  pull_request:
+    paths:
+      - ".project-narrative.json"
+      - "narrative/**"
+      - "Narrative.md"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fragments and compiled narrative
+        uses: ${ACTION_REF}
+        with:
+          mode: check
+`,
+  ".github/pull_request_template.md": `## Change
+
+Describe the repository change.
+
+## Narrative classification
+
+- Apply \`${REQUIRED_LABEL}\` when this PR makes a meaningful product, architecture, governance,
+  operational, correction, or experimental decision.
+- Leave the label off for mechanical changes that do not alter project intent.
+
+Delete the three sections below when the PR does not require a narrative entry.
+
+## Narrative Context
+
+Why was a decision needed, and what evidence or constraints shaped it?
+
+## Narrative Decision
+
+What was chosen? Include material rejected alternatives where they aid future understanding.
+
+## Narrative Consequences
+
+What changes, what trade-offs result, and what remains deliberately open?
+`,
+};
+
+/**
+ * Scaffold a consumer repository: run init, then write the workflows and PR template that init
+ * alone does not create. Never overwrites existing files. Returns the created and skipped paths
+ * plus the manual follow-ups the CLI cannot perform (repository settings and label creation), so
+ * a human or an installing agent receives one deterministic, machine-readable result.
+ */
+export function install(configPath = ".project-narrative.json") {
+  init(configPath);
+  const created = [];
+  const skipped = [];
+  for (const [path, contents] of Object.entries(SCAFFOLD)) {
+    if (existsSync(path)) {
+      skipped.push(path);
+      continue;
+    }
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, contents);
+    created.push(path);
+  }
+  const followUps = [
+    "Settings > Actions > General > Workflow permissions: select 'Read and write permissions' " +
+      "and enable 'Allow GitHub Actions to create and approve pull requests'.",
+    `Create a repository label named exactly '${REQUIRED_LABEL}'.`,
+    "Commit and merge these files to the default branch before the first decision capture; " +
+      "workflows only run from files already on the default branch.",
+  ];
+  return { created, skipped, followUps };
+}
+
 function usage() {
-  console.log("Usage: narrative <init|validate|compile|check> [--config path]");
+  console.log("Usage: narrative <init|install|validate|compile|check> [--config path]");
+}
+
+function reportInstall(result) {
+  for (const path of result.created) console.log(`  created ${path}`);
+  for (const path of result.skipped) console.log(`  kept    ${path} (already present)`);
+  console.log("Manual follow-ups the CLI cannot perform:");
+  for (const step of result.followUps) console.log(`  - ${step}`);
 }
 
 function main(argv) {
@@ -186,6 +299,7 @@ function main(argv) {
   const configIndex = argv.indexOf("--config");
   const configPath = configIndex >= 0 ? argv[configIndex + 1] : ".project-narrative.json";
   if (command === "init") init(configPath);
+  else if (command === "install") reportInstall(install(configPath));
   else if (command === "validate") loadFragments(loadConfig(configPath));
   else if (command === "compile") compile(configPath);
   else if (command === "check") compile(configPath, true);
