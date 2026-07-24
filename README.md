@@ -23,6 +23,27 @@ must not be hand-edited. Slugs are durable identities; displayed entry numbers a
 help an author draft the PR sections, but no model participates in validation, compilation,
 ordering, or merging.
 
+## Quick install
+
+Most adopters do not need the step-by-step guide. From the root of your repository, with Node.js 20
+or newer:
+
+```bash
+npx --yes --package=github:jamiemitchellconsultants/Narrative narrative install
+```
+
+`narrative install` is non-destructive and scaffolds the configuration, preamble, compiled
+`Narrative.md`, both workflows, and the PR template in one step. It then prints the three manual
+follow-ups it cannot perform for you: enabling workflow PR-creation permission, creating the
+`narrative-required` label, and merging the scaffolded files to your default branch.
+
+If you drive setup through a coding agent — for example *"add jamiemitchellconsultants/narrative to
+this repo"* — point it at [`INSTALL.md`](INSTALL.md), which is written for the installing agent and
+makes the outcome deterministic across tools.
+
+The step-by-step guide below explains what `narrative install` scaffolds and why, for adopters who
+prefer to apply each piece by hand or need custom paths.
+
 ## New repository setup — step by step
 
 The instructions below assume that your repository already exists on GitHub and that GitHub Actions
@@ -369,6 +390,9 @@ The CLI requires Node.js 20 or newer and has no runtime dependencies:
 ```bash
 # Create missing standard files and compile the initial document
 node bin/narrative.mjs init
+
+# Scaffold everything init does, plus the workflows and PR template (non-destructive)
+node bin/narrative.mjs install
 
 # Validate every fragment
 node bin/narrative.mjs validate

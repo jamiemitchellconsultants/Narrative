@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync } from
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { parseFragment, render, loadFragments, createFragment, summariseDecision } from "../bin/narrative.mjs";
+import { existsSync } from "node:fs";
+import { parseFragment, render, loadFragments, createFragment, summariseDecision, install, SCAFFOLD } from "../bin/narrative.mjs";
 
 const valid = `---
 date: 2026-07-21
@@ -67,6 +68,34 @@ test("uses the last complete sentence within the summary limit", () => {
 
 test("falls back to a word-safe ellipsis when no complete sentence fits", () => {
   assert.equal(summariseDecision("A deliberately long sentence with no early punctuation", 31), "A deliberately long sentence…");
+});
+
+test("install scaffolds workflows, template, and the compiled document without overwriting", () => {
+  const root = mkdtempSync(join(tmpdir(), "narrative-install-"));
+  const previous = process.cwd();
+  process.chdir(root);
+  try {
+    const first = install();
+    for (const path of Object.keys(SCAFFOLD)) assert.ok(existsSync(path), `missing ${path}`);
+    assert.ok(existsSync("Narrative.md"));
+    assert.deepEqual(first.created.sort(), Object.keys(SCAFFOLD).sort());
+    assert.deepEqual(first.skipped, []);
+    assert.ok(first.followUps.some((step) => /narrative-required/.test(step)));
+
+    writeFileSync(".github/pull_request_template.md", "custom template");
+    const second = install();
+    assert.ok(second.skipped.includes(".github/pull_request_template.md"));
+    assert.equal(readFileSync(".github/pull_request_template.md", "utf8"), "custom template");
+  } finally {
+    process.chdir(previous);
+  }
+});
+
+test("scaffolded workflows reference the action and the required label", () => {
+  const maintain = SCAFFOLD[".github/workflows/maintain-narrative.yml"];
+  assert.match(maintain, /uses: jamiemitchellconsultants\/Narrative@/);
+  assert.match(maintain, /required-label: narrative-required/);
+  assert.match(SCAFFOLD[".github/workflows/validate-narrative.yml"], /mode: check/);
 });
 
 test("runs the CLI through an npm-style executable symlink", () => {
