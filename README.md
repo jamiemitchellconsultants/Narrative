@@ -364,6 +364,7 @@ title: "Choose a managed queue"
 summary: "Use a managed queue for delivery buffering."
 kind: architecture
 status: accepted
+sequence: 2026-07-21T09:30:00Z
 evidence: "https://github.com/example/project/pull/42; merge commit abc123"
 ---
 
@@ -379,6 +380,11 @@ What was chosen and the material alternatives.
 
 What follows, including trade-offs and open questions.
 ```
+
+`date` has day precision and is what readers see. `sequence` is optional, never rendered, and
+exists only to order fragments that tie on `date` — routine when several PRs land in one session.
+The action populates it automatically from the PR's merge timestamp; a hand-authored fragment can
+omit it, and same-day fragments without one fall back to filename order as before.
 
 Supported kinds are `architecture`, `product`, `governance`, `operational`, `correction`, and
 `experiment`. Supported statuses are `proposed`, `accepted`, and `superseded`.

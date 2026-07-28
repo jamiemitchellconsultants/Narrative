@@ -19,6 +19,9 @@ const ALLOWED_STATUS = new Set(["proposed", "accepted", "superseded"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SECTION_RE = /^## (Context|Decision|Consequences)\s*$/gm;
+// A full-precision UTC instant. `date` is a display value with day precision, deliberately too
+// coarse to order same-day entries; `sequence` breaks that tie without appearing anywhere rendered.
+const SEQUENCE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 export function loadConfig(path = ".project-narrative.json") {
   if (!existsSync(path)) return { ...DEFAULT_CONFIG };
@@ -61,6 +64,9 @@ export function parseFragment(file, raw, config = DEFAULT_CONFIG) {
     if (!meta[key]) throw new Error(`${file}: '${key}' is required`);
   }
   if (!realDate(meta.date)) throw new Error(`${file}: date must be a real YYYY-MM-DD date`);
+  if (meta.sequence !== undefined && !SEQUENCE_RE.test(meta.sequence)) {
+    throw new Error(`${file}: sequence must be a UTC instant like 2026-07-21T09:30:00Z`);
+  }
   if (!SLUG_RE.test(meta.slug)) throw new Error(`${file}: slug must be lower-case kebab-case`);
   if (!ALLOWED_KINDS.has(meta.kind)) throw new Error(`${file}: unsupported kind '${meta.kind}'`);
   if (!ALLOWED_STATUS.has(meta.status)) throw new Error(`${file}: unsupported status '${meta.status}'`);
@@ -92,7 +98,11 @@ export function loadFragments(config) {
     if (slugs.has(fragment.slug)) throw new Error(`duplicate slug '${fragment.slug}'`);
     slugs.add(fragment.slug);
   }
-  return fragments.sort((a, b) => a.date.localeCompare(b.date) || a.file.localeCompare(b.file));
+  // Same-day fragments (routine when several PRs land in one session) tie on `date`, which only
+  // has day precision. `sequence`, an ISO instant, breaks that tie in true merge order; a fragment
+  // without one (hand-authored, or predating this field) falls back to filename order as before.
+  return fragments.sort((a, b) =>
+    a.date.localeCompare(b.date) || (a.sequence ?? a.file).localeCompare(b.sequence ?? b.file));
 }
 
 function escapeCell(value) {
@@ -142,8 +152,12 @@ export function createFragment(config, entry) {
   const evidence = entry.evidence ? `\nevidence: ${quote(entry.evidence)}` : "";
   const status = entry.status ?? "proposed";
   if (!ALLOWED_STATUS.has(status)) throw new Error(`unsupported entry status '${status}'`);
+  if (entry.sequence !== undefined && !SEQUENCE_RE.test(entry.sequence)) {
+    throw new Error("entry sequence must be a UTC instant like 2026-07-21T09:30:00Z");
+  }
+  const sequence = entry.sequence ? `\nsequence: ${entry.sequence}` : "";
   const contents = `---\ndate: ${entry.date}\nslug: ${slug}\ntitle: ${quote(entry.title)}\n` +
-    `summary: ${quote(entry.summary)}\nkind: ${entry.kind}\nstatus: ${status}${evidence}\n---\n\n` +
+    `summary: ${quote(entry.summary)}\nkind: ${entry.kind}\nstatus: ${status}${sequence}${evidence}\n---\n\n` +
     `## Context\n\n${entry.context.trim()}\n\n## Decision\n\n${entry.decision.trim()}\n\n` +
     `## Consequences\n\n${entry.consequences.trim()}\n`;
   writeFileSync(path, contents);
