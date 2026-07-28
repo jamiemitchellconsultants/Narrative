@@ -53,7 +53,8 @@ if (!context || !decision || !consequences) {
 }
 
 const config = loadConfig(configPath);
-const date = new Date(pr.merged_at).toISOString().slice(0, 10);
+const mergedAt = new Date(pr.merged_at).toISOString();
+const date = mergedAt.slice(0, 10);
 const slug = slugify(pr.title) || `pull-request-${pr.number}`;
 const summary = summariseDecision(decision, config.summaryMaxCharacters);
 createFragment(config, {
@@ -67,6 +68,9 @@ createFragment(config, {
   consequences,
   evidence: `${pr.html_url}; merge commit ${pr.merge_commit_sha}`,
   status: "accepted",
+  // Orders same-day entries by true merge order. `date` alone cannot: two PRs merged hours apart
+  // on the same calendar day would otherwise tie and fall back to alphabetic filename order.
+  sequence: mergedAt,
 });
 compile(configPath);
 
