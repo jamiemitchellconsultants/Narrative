@@ -42,6 +42,13 @@ Preserve these behaviors unless a reviewed decision explicitly changes them:
   the manual follow-ups (workflow PR permission, the trigger label) it cannot perform. `INSTALL.md`
   is the agent-facing consumer-install recipe and is distinct from this file, which governs
   developing the processor.
+- `INSTALL.md` additionally requires the installing agent to record the narrative contract in the
+  consumer's own canonical agent instruction file (`CLAUDE.md` or `AGENTS.md`, whichever that
+  repository already treats as authoritative), created if absent and appended to if present, never
+  overwritten. This is a recipe obligation, not CLI behaviour: `install` does not write instruction
+  files. Scaffolding only makes the mechanism available — a consumer whose agents were never told
+  the rules merges decision-bearing pull requests that produce no entry, silently, which is the
+  observed failure mode this step exists to prevent.
 - `narrative validate` validates fragment schema and content.
 - `narrative compile` deterministically regenerates the configured output from fragments.
 - `narrative check` fails when fragments are invalid or the compiled output is stale.

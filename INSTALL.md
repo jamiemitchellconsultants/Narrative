@@ -49,6 +49,52 @@ them and must not be reported as done:
 3. **Commit and merge the scaffolded files to the default branch** before the first decision
    capture. Workflows only run from files already present on the default branch.
 
+## Record the contract in the consumer's agent instructions (do not skip)
+
+Scaffolding makes the mechanism *available*. Nothing in it makes an agent working in this repository
+months from now aware that it exists — and an agent that does not know the rules will merge
+decision-bearing pull requests that produce no entry, silently.
+
+This is the most common way an installation decays, and it is not hypothetical: a repository
+installed this way lost entries on four consecutive pull requests. Its template documented the label
+rule the whole time. The agent never read it, because creating a pull request with a supplied body
+replaces the template wholesale.
+
+Find the repository's canonical agent instruction file — `CLAUDE.md` or `AGENTS.md`, whichever this
+repository already treats as authoritative. Create it if neither exists; **append a section if one
+does, and never overwrite existing instructions.** The same non-destructive rule you follow for an
+existing pull-request template applies here.
+
+The section must state:
+
+- `Narrative.md` is generated and never hand-edited; edit the fragment and recompile.
+- A decision-bearing pull request needs **both** the `narrative-required` label **and** three body
+  headings, spelled exactly as the template spells them:
+  - `## Narrative Context`
+  - `## Narrative Decision`
+  - `## Narrative Consequences`
+- The maintenance workflow fires on the **merge event only**. A missing label makes it exit
+  silently; missing sections with the label present make it fail visibly. **Neither is repairable
+  after merge** — labelling a merged pull request does nothing, and a missed entry has to be written
+  by hand as a fragment.
+- Supplying a pull-request body replaces the repository template wholesale. If you pass a body,
+  carry the three sections in it yourself.
+- A narrative-only pull request carries no label, or it would recursively generate an entry about
+  maintaining the narrative.
+- An accepted entry is never rewritten to read as though a later, better framing had been there all
+  along. A reversal is a new entry of kind `correction` citing the original by slug — otherwise the
+  record loses the evidence that the framing ever needed correcting.
+
+If the repository has no pointer files for the other tier-one agents, offer to add them:
+`.github/copilot-instructions.md`, `GEMINI.md`, `.cursor/rules/` (`alwaysApply: true`),
+`.windsurf/rules/` (`trigger: always_on`), `.clinerules/`, and whichever of `CLAUDE.md` or
+`AGENTS.md` is not the canonical one. Pointers reference the canonical file and restate none of its
+rules — a stale copy is worse than no copy, because an agent cannot tell which is current. Do not
+cite a location the repository does not contain.
+
+This step is scaffolding, not a decision. It belongs in the same unlabelled installation pull
+request.
+
 ## Verification
 
 After scaffolding, run the deterministic gate to confirm a valid initial state:
