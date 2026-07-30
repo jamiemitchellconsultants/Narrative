@@ -133,8 +133,16 @@ For a mechanical change that does not alter project intent:
 - Remove the three Narrative sections from the pull-request description.
 
 In a consumer repository, the post-merge maintenance workflow uses that label and evidence to
-propose a separate draft containing the fragment and regenerated `Narrative.md`. Never edit a
-consumer's generated `Narrative.md` directly; edit its authoritative fragment and recompile.
+propose a separate draft containing the fragment and regenerated `Narrative.md`.
+
+The compiled output is never authored, hand-edited, or hand-merged, in this repository or any
+consumer's. The only narrative file written by hand is a fragment under the configured fragments
+directory; the compiled file is produced by `narrative compile` and by nothing else. This applies to
+merge conflicts as well: when two branches each add an entry, the compiled projection collides while
+the fragments merge cleanly, and the correct resolution is to discard both sides of the projection
+and recompile rather than to reconcile the markers. Preserve that property — a change that made
+compilation non-deterministic, or that made the compiled file meaningful to hand-merge, would break
+the guarantee this rule rests on.
 
 Narrative-only proposal or repair pull requests must not carry `narrative-required`, because doing
 so would recursively create an entry about maintaining the Narrative itself.
