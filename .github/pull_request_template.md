@@ -8,7 +8,11 @@ Describe the repository change.
   operational, correction, or experimental decision.
 - Leave the label off for mechanical changes that do not alter project intent.
 
-Delete the three sections below when the PR does not require a narrative entry.
+Delete the four sections below when the PR does not require a narrative entry.
+
+## Narrative Kind
+
+Choose exactly one: product, architecture, governance, operational, correction, or experiment.
 
 ## Narrative Context
 

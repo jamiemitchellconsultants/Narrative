@@ -22,27 +22,36 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'narrative-required')
     steps:
       # Pre-merge mirror of the post-merge maintain gate: a narrative-required PR
-      # body must carry the same non-empty H2 sections the maintain action reads,
+      # body must carry the same exact non-empty H2 sections the maintain action reads,
       # so a missing heading fails review instead of silently failing after merge.
       - name: Require narrative sections in the PR body
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           node - <<'NODE'
-          const body = process.env.PR_BODY || "";
-          const section = (heading) => {
-            const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            return body
-              .match(new RegExp(`(?:^|\\n)##\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`, "i"))?.[1]
-              ?.trim();
-          };
-          const missing = ["Narrative Context", "Narrative Decision", "Narrative Consequences"]
-            .filter((heading) => !section(heading));
-          if (missing.length) {
-            console.error(
-              `::error::narrative-required PR body must contain non-empty '## ' sections: ${missing.join(", ")}`,
-            );
+          const body = (process.env.PR_BODY || "").replace(/\r\n?/g, "\n");
+          const required = ["Narrative Kind", "Narrative Context", "Narrative Decision", "Narrative Consequences"];
+          const kinds = new Set(["product", "architecture", "governance", "operational", "correction", "experiment"]);
+          const headings = [...body.matchAll(/^## (Narrative Kind|Narrative Context|Narrative Decision|Narrative Consequences)[ \t]*$/gm)];
+          const evidence = new Map();
+          for (const heading of required) {
+            const matches = headings.filter((match) => match[1] === heading);
+            if (matches.length !== 1) {
+              console.error(`::error::narrative-required PR must contain exactly one '## ${heading}' heading; found ${matches.length}.`);
+              process.exit(1);
+            }
+            const start = matches[0].index + matches[0][0].length;
+            const following = headings.find((match) => match.index > matches[0].index);
+            const content = body.slice(start, following?.index).trim();
+            if (!content) {
+              console.error(`::error::'## ${heading}' must be non-empty.`);
+              process.exit(1);
+            }
+            evidence.set(heading, content);
+          }
+          if (!kinds.has(evidence.get("Narrative Kind"))) {
+            console.error(`::error::'## Narrative Kind' must contain exactly one canonical value: ${[...kinds].join(", ")}.`);
             process.exit(1);
           }
-          console.log("All required narrative sections are present.");
+          console.log("All required narrative evidence is present.");
           NODE

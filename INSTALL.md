@@ -25,14 +25,14 @@ scaffolds:
 - `Narrative.md` — the compiled projection (do not hand-edit afterwards)
 - `.github/workflows/maintain-narrative.yml` — post-merge capture on labelled, merged PRs
 - `.github/workflows/validate-narrative.yml` — deterministic PR validation
-- `.github/pull_request_template.md` — the three narrative sections the processor consumes
+- `.github/pull_request_template.md` — the four narrative evidence headings the processor consumes
 
 The command prints each path as `created` or `kept`, followed by the manual follow-ups below. Relay
 those follow-ups to the user verbatim — they are the only steps the CLI cannot perform.
 
 If the repository already has a `.github/pull_request_template.md`, the command keeps it untouched.
-In that case, surface to the user that the existing template must gain three exact headings —
-`## Narrative Context`, `## Narrative Decision`, `## Narrative Consequences` — or labelled PRs will
+In that case, surface to the user that the existing template must gain four exact headings —
+`## Narrative Kind`, `## Narrative Context`, `## Narrative Decision`, `## Narrative Consequences` — or labelled PRs will
 fail visibly. Do not silently overwrite their template.
 
 ## Manual follow-ups you must surface (the CLI cannot do these)
@@ -68,8 +68,9 @@ existing pull-request template applies here.
 The section must state:
 
 - `Narrative.md` is generated and never hand-edited; edit the fragment and recompile.
-- A decision-bearing pull request needs **both** the `narrative-required` label **and** three body
+- A decision-bearing pull request needs **both** the `narrative-required` label **and** four body
   headings, spelled exactly as the template spells them:
+  - `## Narrative Kind`
   - `## Narrative Context`
   - `## Narrative Decision`
   - `## Narrative Consequences`
@@ -78,7 +79,13 @@ The section must state:
   after merge** — labelling a merged pull request does nothing, and a missed entry has to be written
   by hand as a fragment.
 - Supplying a pull-request body replaces the repository template wholesale. If you pass a body,
-  carry the three sections in it yourself.
+  carry the four headings in it yourself.
+- A human or coding agent selects exactly one canonical Narrative Kind by the primary nature of the
+  decision, not the artefact changed or implementation location: `product` (product or domain),
+  `architecture` (architecture or integration), `governance` (governance or development process),
+  `operational` (operational policy or practice), `correction` (an earlier decision or shipped
+  behaviour), or `experiment` (a bounded experiment worth retaining). Where several fit, choose
+  the primary nature for human review; the processor never infers or defaults a Kind.
 - A narrative-only pull request carries no label, or it would recursively generate an entry about
   maintaining the narrative.
 - An accepted entry is never rewritten to read as though a later, better framing had been there all
@@ -112,9 +119,9 @@ honestly; do not weaken validation to make it pass.
   To change wording, edit the fragment and run `narrative compile`.
 - Do not add the `narrative-required` label to the installation PR itself. Installing the processor
   is a mechanical change; labelling it would recursively create an entry about the tooling.
-- Do not invent Context, Decision, or Consequences content. Those are authored by a human in the PR
+- Do not invent Kind, Context, Decision, or Consequences content. Those are authored by a human in the PR
   body; the processor only captures explicit evidence.
-- Do not change the three section heading names or the label spelling — they are public interfaces.
+- Do not change the four section heading names or the label spelling — they are public interfaces.
 
 ## Pinning
 

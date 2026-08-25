@@ -5,13 +5,13 @@ explicit decision evidence from merged pull requests into proposed narrative fra
 those fragments deterministically, and compiles them into `Narrative.md`.
 
 It is deliberately not an automated changelog. The processor will not invent rationale from a
-diff. A pull request must opt in with a label and provide explicit Context, Decision and
-Consequences. After that PR merges, the processor opens a separate draft narrative PR so a human
+diff. A pull request must opt in with a label and provide an explicit canonical Kind plus Context,
+Decision and Consequences. After that PR merges, the processor opens a separate draft narrative PR so a human
 can review the wording before it becomes part of the repository's accepted record.
 
 ## How it works
 
-1. A project PR is labelled `narrative-required` and contains three narrative sections.
+1. A project PR is labelled `narrative-required` and contains a canonical Narrative Kind and three narrative sections.
 2. The project PR is reviewed and merged normally.
 3. A GitHub Actions workflow runs the external Project Narrative action.
 4. The action creates one fragment under `narrative/entries/` and recompiles `Narrative.md`.
@@ -232,7 +232,11 @@ Describe the repository change.
   operational, correction, or experimental decision.
 - Leave the label off for mechanical changes that do not alter project intent.
 
-Delete the three sections below when the PR does not require a narrative entry.
+Delete the four sections below when the PR does not require a narrative entry.
+
+## Narrative Kind
+
+Choose exactly one: product, architecture, governance, operational, correction, or experiment.
 
 ## Narrative Context
 
@@ -247,8 +251,9 @@ What was chosen? Include material rejected alternatives where they aid future un
 What changes, what trade-offs result, and what remains deliberately open?
 ```
 
-The three heading names are an interface consumed by the processor and must remain exact. A labelled
-PR missing any of them fails visibly instead of receiving invented rationale.
+The four heading names are an interface consumed by the processor and must remain exact. A labelled
+PR missing any of them, or supplying an unsupported or non-canonical Kind, fails visibly instead of
+receiving invented rationale or a default classification.
 
 ### 10. Optionally protect the accepted record
 
@@ -291,7 +296,8 @@ a purely mechanical edit: the test should contain a real decision that can be de
 
 ### 2. Open the project PR
 
-Complete `Narrative Context`, `Narrative Decision`, and `Narrative Consequences` in the PR body. Keep
+Select one canonical `Narrative Kind`, then complete `Narrative Context`, `Narrative Decision`, and
+`Narrative Consequences` in the PR body. Keep
 the one-line decision clear: it becomes the generated index summary, bounded by
 `summaryMaxCharacters` without cutting a sentence or word in half.
 
@@ -351,6 +357,23 @@ Apply `narrative-required` when a PR makes or changes a meaningful:
 Usually omit it for formatting, dependency refreshes with no policy choice, generated-file refreshes,
 typo fixes, and mechanical refactors that preserve intent. The objective is a replayable decision
 history, not a second commit log.
+
+## Choosing Narrative Kind
+
+A human or coding agent supplies exactly one canonical Kind by classifying the primary nature of the
+decision being recorded, not the artefact changed or where the change is implemented:
+
+- `product` — product or domain decision;
+- `architecture` — architecture or integration decision;
+- `governance` — governance or development-process decision;
+- `operational` — operational policy or practice;
+- `correction` — correction to an earlier recorded decision or shipped behaviour; and
+- `experiment` — bounded experiment whose outcome should remain in project memory.
+
+Where several values seem plausible, select the primary nature and leave that explicit choice for
+human review. The processor validates and preserves the supplied canonical value; it never infers
+or defaults a Kind from a title, diff, path, filename, label, metadata, prose, or repository
+convention.
 
 ## Fragment format
 
@@ -444,8 +467,17 @@ The job deliberately exits successfully for non-qualifying PRs.
 
 ### A labelled PR makes the workflow fail before pushing
 
-Confirm its body contains non-empty `## Narrative Context`, `## Narrative Decision`, and
-`## Narrative Consequences` sections. Heading names and levels must be exact.
+Confirm its body contains exactly one non-empty `## Narrative Kind` with a canonical value, plus
+non-empty `## Narrative Context`, `## Narrative Decision`, and `## Narrative Consequences` sections.
+Heading names and levels must be exact.
+
+### Migrating an existing consumer
+
+Before relying on explicit Kind capture, deliberately update the consumer's pinned Narrative
+implementation, pull-request template, and canonical agent instructions together. Add the four
+exact headings to the template and the Kind-selection guidance to the canonical instructions; do
+not rewrite accepted fragments or generated history. There is no automatic upgrade: existing
+consumers retain their historical entries and adopt the contract for newly merged labelled PRs.
 
 ### Validation reports that `Narrative.md` is stale
 

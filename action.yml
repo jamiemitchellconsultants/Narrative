@@ -1,5 +1,5 @@
 name: Project Narrative
-description: Propose and compile an evidence-backed project narrative entry after a pull request merges.
+description: Propose and compile an evidence-backed project narrative entry after a labelled pull request with explicit Narrative Kind evidence merges.
 author: Jamie Mitchell Consultants
 inputs:
   github-token:
