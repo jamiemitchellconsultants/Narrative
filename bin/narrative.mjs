@@ -14,7 +14,7 @@ export const DEFAULT_CONFIG = {
 };
 
 const REQUIRED_META = ["date", "slug", "title", "summary", "kind", "status"];
-const ALLOWED_KINDS = new Set(["architecture", "product", "governance", "operational", "correction", "experiment"]);
+export const ALLOWED_KINDS = new Set(["architecture", "product", "governance", "operational", "correction", "experiment"]);
 const ALLOWED_STATUS = new Set(["proposed", "accepted", "superseded"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -252,7 +252,11 @@ Describe the repository change.
   operational, correction, or experimental decision.
 - Leave the label off for mechanical changes that do not alter project intent.
 
-Delete the three sections below when the PR does not require a narrative entry.
+Delete the four sections below when the PR does not require a narrative entry.
+
+## Narrative Kind
+
+Choose exactly one: product, architecture, governance, operational, correction, or experiment.
 
 ## Narrative Context
 
