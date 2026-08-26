@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { parseFragment, render, loadFragments, createFragment, summariseDecision, install, SCAFFOLD } from "../bin/narrative.mjs";
+import { parseNarrativeEvidence } from "../action/pr-evidence.mjs";
 
 const valid = `---
 date: 2026-07-21
@@ -125,6 +126,85 @@ test("falls back to a word-safe ellipsis when no complete sentence fits", () => 
   assert.equal(summariseDecision("A deliberately long sentence with no early punctuation", 31), "A deliberately long sentence…");
 });
 
+function narrativeBody(kind = "architecture") {
+  return `## Narrative Kind
+
+${kind}
+
+## Narrative Context
+
+Context.
+
+## Narrative Decision
+
+Decision.
+
+## Narrative Consequences
+
+Consequences.
+`;
+}
+
+test("preserves every explicit canonical Narrative Kind", () => {
+  for (const kind of ["product", "architecture", "governance", "operational", "correction", "experiment"]) {
+    assert.equal(parseNarrativeEvidence(narrativeBody(kind)).kind, kind);
+  }
+});
+
+test("rejects missing, empty, duplicate, unsupported, and non-canonical Narrative Kind evidence", () => {
+  assert.throws(() => parseNarrativeEvidence(narrativeBody().replace("## Narrative Kind\n\narchitecture\n\n", "")), /exact ## Narrative Kind/);
+  assert.throws(() => parseNarrativeEvidence(narrativeBody("")), /must contain exactly one canonical value/);
+  assert.throws(() => parseNarrativeEvidence(`${narrativeBody("product")}\n## Narrative Kind\n\narchitecture\n`), /exactly one/);
+  assert.throws(() => parseNarrativeEvidence(narrativeBody("domain")), /Unsupported Narrative Kind/);
+  assert.throws(() => parseNarrativeEvidence(narrativeBody("Product")), /Unsupported Narrative Kind/);
+});
+
+function runAction(root, pullRequest) {
+  const eventPath = join(root, "event.json");
+  writeFileSync(eventPath, JSON.stringify({ pull_request: pullRequest, repository: { default_branch: "main" } }));
+  return spawnSync(process.execPath, [resolve("action/github-action.mjs")], {
+    cwd: root,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      INPUT_GITHUB_TOKEN: "test-token",
+      INPUT_CONFIG: ".project-narrative.json",
+      INPUT_REQUIRED_LABEL: "narrative-required",
+      GITHUB_EVENT_PATH: eventPath,
+      GITHUB_REPOSITORY: "example/project",
+    },
+  });
+}
+
+test("unmerged and unlabelled pull requests leave no narrative side effects", () => {
+  const root = mkdtempSync(join(tmpdir(), "narrative-action-skip-"));
+  const base = { number: 1, title: "Decision", body: narrativeBody(), labels: [], merged_at: "2026-08-26T10:00:00Z" };
+  const unmerged = runAction(root, { ...base, merged: false });
+  assert.equal(unmerged.status, 0, unmerged.stderr);
+  const unlabelled = runAction(root, { ...base, merged: true });
+  assert.equal(unlabelled.status, 0, unlabelled.stderr);
+  assert.ok(!existsSync(join(root, "narrative")));
+  assert.ok(!existsSync(join(root, "Narrative.md")));
+});
+
+test("invalid Narrative Kind fails before fragment or proposal side effects", () => {
+  const root = mkdtempSync(join(tmpdir(), "narrative-action-invalid-kind-"));
+  const result = runAction(root, {
+    number: 1,
+    title: "Decision",
+    body: narrativeBody("Product"),
+    labels: [{ name: "narrative-required" }],
+    merged: true,
+    merged_at: "2026-08-26T10:00:00Z",
+    html_url: "https://example.test/pull/1",
+    merge_commit_sha: "abc123",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unsupported Narrative Kind/);
+  assert.ok(!existsSync(join(root, "narrative")));
+  assert.ok(!existsSync(join(root, "Narrative.md")));
+});
+
 test("install scaffolds workflows, template, and the compiled document without overwriting", () => {
   const root = mkdtempSync(join(tmpdir(), "narrative-install-"));
   const previous = process.cwd();
@@ -146,6 +226,14 @@ test("install scaffolds workflows, template, and the compiled document without o
   }
 });
 
+test("the scaffolded PR template requires an explicit canonical Narrative Kind", () => {
+  const template = SCAFFOLD[".github/pull_request_template.md"];
+  assert.match(template, /## Narrative Kind/);
+  for (const kind of ["product", "architecture", "governance", "operational", "correction", "experiment"]) {
+    assert.match(template, new RegExp(`\\b${kind}\\b`));
+  }
+});
+
 test("scaffolded workflows reference the action and the required label", () => {
   const maintain = SCAFFOLD[".github/workflows/maintain-narrative.yml"];
   assert.match(maintain, /uses: jamiemitchellconsultants\/Narrative@/);
@@ -153,14 +241,19 @@ test("scaffolded workflows reference the action and the required label", () => {
   assert.match(SCAFFOLD[".github/workflows/validate-narrative.yml"], /mode: check/);
 });
 
-test("runs the CLI through an npm-style executable symlink", () => {
+test("runs the CLI through an npm-style executable symlink", (t) => {
   const root = mkdtempSync(join(tmpdir(), "narrative-cli-"));
   const bin = join(root, "node_modules", ".bin");
   const project = join(root, "project");
   mkdirSync(bin, { recursive: true });
   mkdirSync(project);
   const link = join(bin, "narrative");
-  symlinkSync(resolve("bin/narrative.mjs"), link);
+  try {
+    symlinkSync(resolve("bin/narrative.mjs"), link);
+  } catch (error) {
+    if (error.code === "EPERM") return t.skip("creating symlinks requires Windows Developer Mode or elevated permission");
+    throw error;
+  }
   const result = spawnSync(process.execPath, [link, "init"], { cwd: project, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /narrative init: OK/);
