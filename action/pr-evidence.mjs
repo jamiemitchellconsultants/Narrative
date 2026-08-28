@@ -28,8 +28,8 @@ function sections(body) {
 }
 
 /**
- * Read the explicit, human-authored PR evidence. Classification is deliberately bounded to the
- * six canonical values: this function never derives a kind from other PR or repository metadata.
+ * Read the explicit PR evidence. Kind selection is deliberately bounded to the six canonical
+ * values: this function never derives a kind from other PR or repository metadata.
  */
 export function parseNarrativeEvidence(body) {
   const found = sections(body);

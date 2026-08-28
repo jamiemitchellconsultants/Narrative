@@ -120,8 +120,9 @@ honestly; do not weaken validation to make it pass.
   To change wording, edit the fragment and run `narrative compile`.
 - Do not add the `narrative-required` label to the installation PR itself. Installing the processor
   is a mechanical change; labelling it would recursively create an entry about the tooling.
-- Do not invent Kind, Context, Decision, or Consequences content. Those are authored by a human in
-  the PR body; the processor only captures explicit evidence.
+- Do not invent Kind, Context, Decision, or Consequences content. A human or coding agent selects
+  Kind; Context, Decision, and Consequences are authored by a human in the PR body. The processor
+  only captures explicit evidence.
 - Do not change the four section heading names or the label spelling — they are public interfaces.
 
 ## Pinning
