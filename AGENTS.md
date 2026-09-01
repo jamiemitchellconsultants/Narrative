@@ -13,7 +13,7 @@ It is deliberately not a changelog generator:
 
 - It never invents rationale from code or diffs.
 - A pull request opts in through the configured label.
-- Context, Decision, and Consequences must be supplied explicitly in the pull-request body.
+- Narrative Kind, Context, Decision, and Consequences must be supplied explicitly in the pull-request body.
 - Generated wording is proposed on a separate draft pull request.
 - Human review remains the authority that accepts a fragment.
 - Validation, ordering, compilation, and merging are model-free and deterministic.
@@ -58,7 +58,7 @@ Preserve these behaviors unless a reviewed decision explicitly changes them:
   that exact order.
 - Summaries respect the configured character limit without cutting a word or sentence carelessly.
 - The maintenance action ignores unmerged or unlabelled pull requests without fabricating entries.
-- A qualifying merged pull request missing any required narrative section fails visibly.
+- A qualifying merged pull request missing an explicit canonical Narrative Kind or any required narrative section fails visibly.
 - The action creates or force-updates `automation/narrative-pr-<number>` and opens a separate draft
   proposal rather than committing accepted history directly to the default branch.
 
@@ -119,18 +119,30 @@ A pull request requires Narrative evidence when it makes a meaningful:
 For a decision-bearing pull request:
 
 1. Apply the `narrative-required` label before merge.
-2. Replace pull-request placeholders with substantive sections named exactly:
+2. Select exactly one canonical Narrative Kind by classifying the primary nature of the decision
+   being recorded, not the artefact changed or where the change is implemented. A human or coding
+   agent makes this bounded authoring judgement; the processor never infers or defaults it:
+   - `product` — product or domain decision;
+   - `architecture` — architecture or integration decision;
+   - `governance` — governance or development-process decision;
+   - `operational` — operational policy or practice;
+   - `correction` — correction to an earlier recorded decision or shipped behaviour; or
+   - `experiment` — bounded experiment whose outcome should remain in project memory.
+   Where several values seem plausible, choose the primary nature and leave the explicit choice for
+   human review.
+3. Replace pull-request placeholders with substantive sections named exactly:
+   - `## Narrative Kind` (containing only the selected canonical value)
    - `## Narrative Context`
    - `## Narrative Decision`
    - `## Narrative Consequences`
-3. Explain why the decision was required, what was chosen, material constraints or alternatives, and
+4. Explain why the decision was required, what was chosen, material constraints or alternatives, and
    the resulting trade-offs.
-4. Do not merge while the label or any required section is missing.
+5. Do not merge while the label, Kind, or any required section is missing.
 
 For a mechanical change that does not alter project intent:
 
 - Do not apply `narrative-required`.
-- Remove the three Narrative sections from the pull-request description.
+- Remove the four Narrative sections from the pull-request description.
 
 In a consumer repository, the post-merge maintenance workflow uses that label and evidence to
 propose a separate draft containing the fragment and regenerated `Narrative.md`.

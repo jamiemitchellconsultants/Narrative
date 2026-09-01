@@ -29,15 +29,22 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           node - <<'NODE'
-          const body = process.env.PR_BODY || "";
-          const section = (heading) => {
-            const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            return body
-              .match(new RegExp(`(?:^|\\n)##\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`, "i"))?.[1]
-              ?.trim();
-          };
+          const body = (process.env.PR_BODY || "").replace(/\r\n?/g, "\n");
+          const headings = [...body.matchAll(/^## ([^\r\n]+)[ \t]*$/gm)];
+          const section = (heading) => headings
+            .map((match, index) => ({
+              heading: match[1],
+              content: body.slice(match.index + match[0].length, headings[index + 1]?.index).trim(),
+            }))
+            .filter((item) => item.heading === heading);
+          const kind = section("Narrative Kind");
           const missing = ["Narrative Context", "Narrative Decision", "Narrative Consequences"]
-            .filter((heading) => !section(heading));
+            .filter((heading) => !section(heading)[0]?.content);
+          const kinds = new Set(["product", "architecture", "governance", "operational", "correction", "experiment"]);
+          if (!kind.length || kind.length > 1 || !kinds.has(kind[0]?.content)) {
+            console.error("::error::narrative-required PR body must contain exactly one non-empty ## Narrative Kind with a canonical value: product, architecture, governance, operational, correction, or experiment");
+            process.exit(1);
+          }
           if (missing.length) {
             console.error(
               `::error::narrative-required PR body must contain non-empty '## ' sections: ${missing.join(", ")}`,

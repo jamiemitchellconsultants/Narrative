@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createFragment, loadConfig, compile, summariseDecision } from "../bin/narrative.mjs";
+import { parseNarrativeEvidence } from "./pr-evidence.mjs";
 
 const token = process.env.INPUT_GITHUB_TOKEN;
 const configPath = process.env.INPUT_CONFIG || ".project-narrative.json";
@@ -12,11 +13,6 @@ const apiUrl = process.env.GITHUB_API_URL || "https://api.github.com";
 function fail(message) {
   console.error(`::error::${message}`);
   process.exit(1);
-}
-
-function section(body, heading) {
-  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return body.match(new RegExp(`(?:^|\\n)##\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`, "i"))?.[1]?.trim();
 }
 
 function slugify(value) {
@@ -45,12 +41,13 @@ if (requiredLabel && !pr.labels.some((label) => label.name === requiredLabel)) {
 }
 
 const body = pr.body || "";
-const context = section(body, "Narrative Context");
-const decision = section(body, "Narrative Decision");
-const consequences = section(body, "Narrative Consequences");
-if (!context || !decision || !consequences) {
-  fail("A narrative-required PR must contain Narrative Context, Narrative Decision and Narrative Consequences headings");
+let evidence;
+try {
+  evidence = parseNarrativeEvidence(body);
+} catch (error) {
+  fail(error.message);
 }
+const { kind, context, decision, consequences } = evidence;
 
 const config = loadConfig(configPath);
 const mergedAt = new Date(pr.merged_at).toISOString();
@@ -62,7 +59,7 @@ createFragment(config, {
   slug,
   title: pr.title,
   summary,
-  kind: "product",
+  kind,
   context,
   decision,
   consequences,
