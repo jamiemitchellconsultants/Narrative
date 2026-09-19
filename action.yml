@@ -1,12 +1,12 @@
 name: Project Narrative
-description: Propose and compile an evidence-backed project narrative entry after a pull request merges.
+description: Propose and compile an evidence-backed project narrative entry after a pull request merges, and keep open proposals mergeable.
 author: Jamie Mitchell Consultants
 inputs:
   github-token:
-    description: Token used to create the narrative proposal branch and pull request.
+    description: Token used to create the narrative proposal branch and pull request, or to list and update open proposals in refresh mode.
     required: false
   mode:
-    description: Use maintain for merged-PR capture or check for deterministic validation.
+    description: Use maintain for merged-PR capture, check for deterministic validation, or refresh to recompile open proposals after the default branch moves.
     required: false
     default: maintain
   config:
@@ -34,6 +34,13 @@ runs:
         INPUT_CONFIG: ${{ inputs.config }}
         INPUT_REQUIRED_LABEL: ${{ inputs.required-label }}
       run: node "${{ github.action_path }}/action/github-action.mjs"
+    - name: Refresh open narrative proposals
+      if: inputs.mode == 'refresh'
+      shell: bash
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_CONFIG: ${{ inputs.config }}
+      run: node "${{ github.action_path }}/action/github-refresh.mjs"
 branding:
   icon: book-open
   color: blue

@@ -17,6 +17,8 @@ can review the wording before it becomes part of the repository's accepted recor
 4. The action creates one fragment under `narrative/entries/` and recompiles `Narrative.md`.
 5. The action pushes `automation/narrative-pr-<number>` and opens a draft narrative PR.
 6. A human reviews and merges that draft to accept the wording into the project record.
+7. When another entry reaches the default branch first, a refresh workflow merges the default
+   branch into each open proposal and recompiles `Narrative.md`, so proposals stay mergeable.
 
 Accepted fragments stay in the target repository. `Narrative.md` is a deterministic projection and
 must not be hand-edited. Slugs are durable identities; displayed entry numbers are derived. AI may
@@ -33,7 +35,7 @@ npx --yes --package=github:jamiemitchellconsultants/Narrative narrative install
 ```
 
 `narrative install` is non-destructive and scaffolds the configuration, preamble, compiled
-`Narrative.md`, both workflows, and the PR template in one step. It then prints the three manual
+`Narrative.md`, the three workflows, and the PR template in one step. It then prints the three manual
 follow-ups it cannot perform for you: enabling workflow PR-creation permission, creating the
 `narrative-required` label, and merging the scaffolded files to your default branch.
 
@@ -216,6 +218,66 @@ jobs:
 
 This check rejects invalid fragments and a compiled document that no longer matches its source
 fragments.
+
+### 8a. Keep open proposals mergeable
+
+Each proposal is cut from its own merge commit and carries a freshly compiled `Narrative.md`. When
+two proposals are open at once, whichever merges second conflicts on `Narrative.md` — never on its
+fragment, because fragment filenames are unique. The compiled file is a projection, so the correct
+resolution is always to merge the default branch and recompile, never to hand-merge.
+
+Create `.github/workflows/refresh-narrative.yml` to do that automatically:
+
+```yaml
+name: Refresh narrative proposals
+
+on:
+  push:
+    paths:
+      - ".project-narrative.json"
+      - "narrative/**"
+      - "Narrative.md"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: refresh-narrative
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: jamiemitchellconsultants/Narrative@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          mode: refresh
+```
+
+On every push to the default branch that touches the narrative, `refresh` lists open pull requests
+whose head is this repository's own `automation/narrative-pr-<number>` branch and, for each one:
+
+| Situation | Result |
+|---|---|
+| The proposal already contains the default branch | Nothing |
+| The default branch moved but the merged `Narrative.md` is still fresh | Nothing |
+| The only conflict is the compiled output, or the merged output is stale | Merge commit that recompiles the output, pushed without force |
+| Any other file conflicts | No change; the run fails naming the files, for a human to resolve |
+| The merged fragments do not validate (for example a duplicate slug) | No change; the run fails with the validation error |
+
+Every pushed commit has passed `narrative check` before it is pushed. Because pushes made with
+`GITHUB_TOKEN` do not start other workflows, the validation workflow does not re-run on the
+refreshed commit; the check inside `refresh` stands in for it. A push rejected because the branch
+moved during the run is reported as a warning and retried on the next push to the default branch.
+
+**Existing installations:** `narrative install` never overwrites files, so re-running it adds only
+this missing workflow. Or create the file above by hand.
 
 ### 9. Add the PR-authoring template
 
@@ -468,6 +530,16 @@ Normal reruns use a fresh Actions checkout and force-update the same
 `automation/narrative-pr-<number>` remote branch. If someone manually created a conflicting local
 branch in a custom runner, remove or rename that local branch before retrying.
 
+### A narrative proposal PR has a merge conflict on `Narrative.md`
+
+Another entry merged first. If `refresh-narrative.yml` is installed it resolves this on the next
+push to the default branch that touches the narrative. To resolve it by hand, merge the default
+branch into the proposal branch, take either side of `Narrative.md`, run `narrative compile` and
+`narrative check`, and commit. Never reconcile the conflict markers.
+
+If the refresh run fails naming other files, someone edited the proposal branch beyond its
+fragment; resolve those files by hand, then recompile as above.
+
 ### The generated narrative PR has no checks
 
 GitHub does not start new workflow runs for some events created with the repository's own
@@ -480,6 +552,9 @@ branch protection appropriate to your repository.
 - The maintenance job needs `contents: write` to push its automation branch and
   `pull-requests: write` to open the proposal.
 - The validation job needs only `contents: read`.
+- The refresh job needs `contents: write` to push merge commits to proposal branches and
+  `pull-requests: read` to list open proposals. It never force-pushes and touches only this
+  repository's own `automation/narrative-pr-<number>` branches.
 - No PAT, GitHub App secret, model credential, or external API key is required.
 - The action treats PR prose as data and does not execute it as shell input.
 - Compilation is local, model-free, network-free, and deterministic.

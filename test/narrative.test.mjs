@@ -151,6 +151,12 @@ test("scaffolded workflows reference the action and the required label", () => {
   assert.match(maintain, /uses: jamiemitchellconsultants\/Narrative@/);
   assert.match(maintain, /required-label: narrative-required/);
   assert.match(SCAFFOLD[".github/workflows/validate-narrative.yml"], /mode: check/);
+  const refresh = SCAFFOLD[".github/workflows/refresh-narrative.yml"];
+  assert.match(refresh, /uses: jamiemitchellconsultants\/Narrative@/);
+  assert.match(refresh, /mode: refresh/);
+  assert.match(refresh, /github-token: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+  assert.match(refresh, /fetch-depth: 0/);
+  assert.match(refresh, /if: github\.ref_name == github\.event\.repository\.default_branch/);
 });
 
 test("runs the CLI through an npm-style executable symlink", () => {
