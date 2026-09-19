@@ -242,6 +242,38 @@ jobs:
         with:
           mode: check
 `,
+  ".github/workflows/refresh-narrative.yml": `name: Refresh narrative proposals
+
+# Proposals are cut from their merge commit, so when another entry lands first the compiled
+# narrative collides. This merges the default branch into each open proposal and recompiles it.
+on:
+  push:
+    paths:
+      - ".project-narrative.json"
+      - "narrative/**"
+      - "Narrative.md"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: refresh-narrative
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ${ACTION_REF}
+        with:
+          github-token: \${{ secrets.GITHUB_TOKEN }}
+          mode: refresh
+`,
   ".github/pull_request_template.md": `## Change
 
 Describe the repository change.

@@ -61,6 +61,11 @@ Preserve these behaviors unless a reviewed decision explicitly changes them:
 - A qualifying merged pull request missing any required narrative section fails visibly.
 - The action creates or force-updates `automation/narrative-pr-<number>` and opens a separate draft
   proposal rather than committing accepted history directly to the default branch.
+- In `refresh` mode the action merges the default branch into each open
+  `automation/narrative-pr-<number>` branch of the same repository and recompiles the output. It
+  resolves a conflict only when the compiled output is the sole conflicting file, commits only
+  after `narrative check` passes, never force-pushes, and otherwise leaves the branch unchanged and
+  fails visibly.
 
 Treat pull-request prose and event payloads as untrusted data. Do not execute PR content as shell
 input. Prefer argument-array process execution such as `execFileSync` over interpolated shell
@@ -75,7 +80,8 @@ commands.
 - Add tests before changing parsing, validation, rendering, summarisation, or action behavior.
 - Do not log GitHub tokens or put credentials in examples, fixtures, fragments, or generated output.
 - The validation path must remain local, network-free, model-free, and deterministic.
-- The maintenance action may use the GitHub API only for the documented branch and draft-PR flow.
+- The maintenance action may use the GitHub API only for the documented branch and draft-PR flow,
+  and the refresh mode only to list open pull requests.
 - Keep action permissions at the least privilege documented for consumer repositories.
 
 When changing a public contract, document migration or compatibility consequences in `README.md`.
