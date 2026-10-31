@@ -18,6 +18,7 @@ Reviewed fragments are authoritative; this compiled document is their determinis
 | [7](#entry-require-the-consumer-s-agent-instructions-to-record-the-contract) | 2026-07-30 | Require the consumer's agent instructions to record the contract | product | `INSTALL.md` gains a step, placed before Verification so it is part of installation rather than an afterthought: find the consumer's canonical instruction file — `CLAUDE.md` or `AGENTS.md`, whichever that repository already treats as… |
 | [8](#entry-make-the-never-hand-merge-rule-explicit-in-the-core-contracts) | 2026-07-30 | Make the never-hand-merge rule explicit in the core contracts | product | State that the compiled output is never authored, hand-edited, or hand-merged — in this repository or any consumer's — and that the only file written by hand is a fragment under the configured fragments directory. |
 | [9](#entry-add-refresh-mode-to-keep-open-narrative-proposals-mergeable) | 2026-09-19 | Add refresh mode to keep open narrative proposals mergeable | product | Automate that single resolution as a new action mode, `refresh`, run by a consumer workflow on pushes to the default branch that touch the narrative. It acts only on the repository's own `automation/narrative-pr-<number>` branches. |
+| [10](#entry-fix-refresh-close-the-proposal-creation-race) | 2026-10-31 | fix(refresh): close the proposal-creation race | product | Keep deterministic merge-and-recompile recovery and trigger it again after successful maintenance completion, with an explicit manual recovery event. The action understands these native events directly and keeps existing push behavior. |
 
 ---
 
@@ -296,3 +297,25 @@ Rejected alternatives:
 Consumers with the new workflow stop seeing `Narrative.md` conflicts on proposals. Existing installations must add the workflow themselves, since `install` never overwrites, but re-running `install` adds just this file. Because pushes made with `GITHUB_TOKEN` don't trigger other workflows, `validate-narrative` does not re-run on refreshed commits; the in-process `narrative check` stands in for it. The refresh job needs `contents: write` and `pull-requests: read`. Conflicts in other files still need a human.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+---
+
+<a id="entry-fix-refresh-close-the-proposal-creation-race"></a>
+
+## Entry 10 — 2026-10-31 — fix(refresh): close the proposal-creation race
+
+*Kind: product. Status: accepted.*
+
+## Context
+
+Grooveloom's concurrent narrative proposals exposed a gap in push-only recovery: the refresh ran before the maintenance action finished creating its proposal. The generated document then conflicted even though source fragments were independent.
+
+## Decision
+
+Keep deterministic merge-and-recompile recovery and trigger it again after successful maintenance completion, with an explicit manual recovery event. The action understands these native events directly and keeps existing push behavior. Refresh executes only trusted default-branch code and consumes no artifacts from the completed workflow.
+
+## Consequences
+
+Late-created proposals can recover without another narrative merge. Existing installations must update their workflow triggers and keep the configured maintenance workflow name aligned. Review, validation, source-fragment preservation, non-force pushes and conflict refusal outside generated output remain required.
+
+AI-Fingerprint: sha256:2d174dd5876c

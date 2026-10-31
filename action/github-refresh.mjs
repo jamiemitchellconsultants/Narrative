@@ -24,8 +24,12 @@ async function request(path) {
 if (!token || !eventPath || !repository) fail("github-token, GITHUB_EVENT_PATH and GITHUB_REPOSITORY are required");
 const event = JSON.parse(readFileSync(eventPath, "utf8"));
 const base = event.repository?.default_branch;
-if (!base || event.ref !== `refs/heads/${base}`) {
-  console.log("Not a push to the default branch; no narrative proposals to refresh.");
+const eventName = process.env.GITHUB_EVENT_NAME || "push";
+const eligible = (eventName === "push" && event.ref === `refs/heads/${base}`)
+  || (eventName === "workflow_run" && event.action === "completed" && event.workflow_run?.conclusion === "success")
+  || eventName === "workflow_dispatch";
+if (!base || !eligible) {
+  console.log("Not a default-branch push, successful workflow completion or manual refresh; no narrative proposals to refresh.");
   process.exit(0);
 }
 
