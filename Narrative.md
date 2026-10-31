@@ -17,7 +17,8 @@ Reviewed fragments are authoritative; this compiled document is their determinis
 | [6](#entry-add-cursor-windsurf-and-cline-pointer-files) | 2026-07-30 | Add Cursor, Windsurf and Cline pointer files | product | Add one pointer per missing tool, each stating only that `AGENTS.md` is authoritative, that every rule there is binding regardless of tool, and that instruction changes belong in `AGENTS.md` rather than the pointer. |
 | [7](#entry-require-the-consumer-s-agent-instructions-to-record-the-contract) | 2026-07-30 | Require the consumer's agent instructions to record the contract | product | `INSTALL.md` gains a step, placed before Verification so it is part of installation rather than an afterthought: find the consumer's canonical instruction file — `CLAUDE.md` or `AGENTS.md`, whichever that repository already treats as… |
 | [8](#entry-make-the-never-hand-merge-rule-explicit-in-the-core-contracts) | 2026-07-30 | Make the never-hand-merge rule explicit in the core contracts | product | State that the compiled output is never authored, hand-edited, or hand-merged — in this repository or any consumer's — and that the only file written by hand is a fragment under the configured fragments directory. |
-| [9](#entry-fix-refresh-close-the-proposal-creation-race) | 2026-10-31 | fix(refresh): close the proposal-creation race | product | Keep deterministic merge-and-recompile recovery and trigger it again after successful maintenance completion, with an explicit manual recovery event. The action understands these native events directly and keeps existing push behavior. |
+| [9](#entry-add-refresh-mode-to-keep-open-narrative-proposals-mergeable) | 2026-09-19 | Add refresh mode to keep open narrative proposals mergeable | product | Automate that single resolution as a new action mode, `refresh`, run by a consumer workflow on pushes to the default branch that touch the narrative. It acts only on the repository's own `automation/narrative-pr-<number>` branches. |
+| [10](#entry-fix-refresh-close-the-proposal-creation-race) | 2026-10-31 | fix(refresh): close the proposal-creation race | product | Keep deterministic merge-and-recompile recovery and trigger it again after successful maintenance completion, with an explicit manual recovery event. The action understands these native events directly and keeps existing push behavior. |
 
 ---
 
@@ -272,9 +273,36 @@ This does not remove the conflict itself. Any consumer whose narrative pull requ
 
 ---
 
+<a id="entry-add-refresh-mode-to-keep-open-narrative-proposals-mergeable"></a>
+
+## Entry 9 — 2026-09-19 — Add refresh mode to keep open narrative proposals mergeable
+
+*Kind: product. Status: accepted.*
+
+## Context
+
+Each proposal is cut from its own merge commit and carries a freshly compiled `Narrative.md`. When two proposals are open at once, whichever merges second conflicts on `Narrative.md`. Fragments never conflict, because their filenames are unique. The contract already says the compiled file is never hand-merged; the fix is always to merge the default branch and recompile. But that needed a human every time, and EventBooking hit it as soon as two decision-bearing PRs merged in the same session.
+
+## Decision
+
+Automate that single resolution as a new action mode, `refresh`, run by a consumer workflow on pushes to the default branch that touch the narrative. It acts only on the repository's own `automation/narrative-pr-<number>` branches. It resolves a conflict only when the compiled output is the sole conflicting file, commits only after `narrative check` passes, and never force-pushes. Anything else fails visibly and is left for a human.
+
+Rejected alternatives:
+- Stop committing `Narrative.md` in proposals and compile after merge. That would remove the reviewable compiled diff, and would need a default-branch write that the review-first contract avoids.
+- Put the fix in each consumer repository. Every consumer would carry a duplicate.
+- Rebase and force-push. That rewrites a branch a reviewer may already be reading.
+
+## Consequences
+
+Consumers with the new workflow stop seeing `Narrative.md` conflicts on proposals. Existing installations must add the workflow themselves, since `install` never overwrites, but re-running `install` adds just this file. Because pushes made with `GITHUB_TOKEN` don't trigger other workflows, `validate-narrative` does not re-run on refreshed commits; the in-process `narrative check` stands in for it. The refresh job needs `contents: write` and `pull-requests: read`. Conflicts in other files still need a human.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+---
+
 <a id="entry-fix-refresh-close-the-proposal-creation-race"></a>
 
-## Entry 9 — 2026-10-31 — fix(refresh): close the proposal-creation race
+## Entry 10 — 2026-10-31 — fix(refresh): close the proposal-creation race
 
 *Kind: product. Status: accepted.*
 
