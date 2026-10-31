@@ -17,6 +17,7 @@ Reviewed fragments are authoritative; this compiled document is their determinis
 | [6](#entry-add-cursor-windsurf-and-cline-pointer-files) | 2026-07-30 | Add Cursor, Windsurf and Cline pointer files | product | Add one pointer per missing tool, each stating only that `AGENTS.md` is authoritative, that every rule there is binding regardless of tool, and that instruction changes belong in `AGENTS.md` rather than the pointer. |
 | [7](#entry-require-the-consumer-s-agent-instructions-to-record-the-contract) | 2026-07-30 | Require the consumer's agent instructions to record the contract | product | `INSTALL.md` gains a step, placed before Verification so it is part of installation rather than an afterthought: find the consumer's canonical instruction file — `CLAUDE.md` or `AGENTS.md`, whichever that repository already treats as… |
 | [8](#entry-make-the-never-hand-merge-rule-explicit-in-the-core-contracts) | 2026-07-30 | Make the never-hand-merge rule explicit in the core contracts | product | State that the compiled output is never authored, hand-edited, or hand-merged — in this repository or any consumer's — and that the only file written by hand is a fragment under the configured fragments directory. |
+| [9](#entry-fix-refresh-close-the-proposal-creation-race) | 2026-10-31 | fix(refresh): close the proposal-creation race | product | Keep deterministic merge-and-recompile recovery and trigger it again after successful maintenance completion, with an explicit manual recovery event. The action understands these native events directly and keeps existing push behavior. |
 
 ---
 
@@ -268,3 +269,25 @@ The correct conflict resolution is now written down where an agent developing th
 Nothing about the processor changes — `npm run check` passes 13/13 and no CLI, action, validation, or rendering behaviour is touched. The addition is a constraint on future changes: making the projection non-deterministic is now visibly a contract break rather than a quality regression.
 
 This does not remove the conflict itself. Any consumer whose narrative pull requests overlap with an open proposal will still collide on the compiled file; the rule makes the resolution unambiguous rather than preventing the collision. Preventing it would mean not committing generated output at all, which is a different convention some consumers already use and this repository does not impose.
+
+---
+
+<a id="entry-fix-refresh-close-the-proposal-creation-race"></a>
+
+## Entry 9 — 2026-10-31 — fix(refresh): close the proposal-creation race
+
+*Kind: product. Status: accepted.*
+
+## Context
+
+Grooveloom's concurrent narrative proposals exposed a gap in push-only recovery: the refresh ran before the maintenance action finished creating its proposal. The generated document then conflicted even though source fragments were independent.
+
+## Decision
+
+Keep deterministic merge-and-recompile recovery and trigger it again after successful maintenance completion, with an explicit manual recovery event. The action understands these native events directly and keeps existing push behavior. Refresh executes only trusted default-branch code and consumes no artifacts from the completed workflow.
+
+## Consequences
+
+Late-created proposals can recover without another narrative merge. Existing installations must update their workflow triggers and keep the configured maintenance workflow name aligned. Review, validation, source-fragment preservation, non-force pushes and conflict refusal outside generated output remain required.
+
+AI-Fingerprint: sha256:2d174dd5876c
