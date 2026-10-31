@@ -17,6 +17,25 @@ function run(cwd, command, args) {
 const git = (cwd, ...args) => run(cwd, "git", args);
 const narrative = (cwd, command) => run(cwd, process.execPath, [cli, command]);
 
+function refreshAction(work, eventName, payload, pulls = []) {
+  const scratch = mkdtempSync(join(tmpdir(), "narrative-refresh-event-"));
+  const event = join(scratch, "event.json");
+  const api = join(scratch, "api.mjs");
+  writeFileSync(event, JSON.stringify({ repository: { default_branch: "main" }, ...payload }));
+  // Only the remote API is replaced: the runner, Git operations, compilation and push are real.
+  writeFileSync(api, `globalThis.fetch = async (url) => {
+    if (url !== "https://api.github.com/repos/owner/app/pulls?state=open&base=main&per_page=100&page=1")
+      throw new Error("Unexpected API request: " + url);
+    return { ok: true, json: async () => JSON.parse(process.env.TEST_REFRESH_PULLS) };
+  };`);
+  return spawnSync(process.execPath, ["--import", api, resolve("action/github-refresh.mjs")], {
+    cwd: work, encoding: "utf8",
+    env: { ...process.env, GITHUB_EVENT_PATH: event, GITHUB_EVENT_NAME: eventName,
+      GITHUB_REPOSITORY: "owner/app", INPUT_GITHUB_TOKEN: "test-fixture",
+      TEST_REFRESH_PULLS: JSON.stringify(pulls) },
+  });
+}
+
 function fragment(slug, date, decision = `Choose ${slug}.`) {
   return `---
 date: ${date}
@@ -184,4 +203,63 @@ test("selects only open proposal branches from this repository", () => {
   ];
   assert.deepEqual(selectProposals(pulls, "owner/app").map((item) => item.head.ref),
     ["automation/narrative-pr-10", "automation/narrative-pr-14"]);
+});
+
+test("a successful maintenance completion repairs a proposal created after the push refresh", () => {
+  const { work } = scenario();
+  const oldBase = git(work, "rev-parse", "HEAD");
+  advanceMain(work, () => addEntry(work, "20260919-design.md", "design", "2026-09-19"));
+  const early = refreshAction(work, "push", { ref: "refs/heads/main" });
+  assert.equal(early.status, 0, early.stderr);
+  assert.match(early.stdout, /No open narrative proposals/);
+
+  const branch = "automation/narrative-pr-10";
+  git(work, "switch", "-q", "-c", branch, oldBase);
+  addEntry(work, "20260919-plan.md", "plan", "2026-09-19");
+  git(work, "push", "-q", "origin", branch);
+  const result = refreshAction(work, "workflow_run", {
+    action: "completed", workflow_run: { conclusion: "success" },
+  }, [{ number: 10, head: { ref: branch, repo: { full_name: "owner/app" } } }]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /merged main and recompiled/);
+  assert.deepEqual(readdirSync(join(work, "narrative/entries")).sort(), ["20260919-design.md", "20260919-plan.md"]);
+  narrative(work, "check");
+  git(work, "fetch", "-q", "origin");
+  git(work, "merge-base", "--is-ancestor", "origin/main", `origin/${branch}`);
+  assert.equal(git(work, "rev-parse", `origin/${branch}`), git(work, "rev-parse", "HEAD"));
+});
+
+test("manual refresh repairs an existing conflicted proposal", () => {
+  const { work } = scenario();
+  const branch = proposal(work, 10, "20260919-plan.md", "plan", "2026-09-19");
+  advanceMain(work, () => addEntry(work, "20260919-design.md", "design", "2026-09-19"));
+  const result = refreshAction(work, "workflow_dispatch", {},
+    [{ number: 10, head: { ref: branch, repo: { full_name: "owner/app" } } }]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /merged main and recompiled/);
+  narrative(work, "check");
+  git(work, "fetch", "-q", "origin");
+  git(work, "merge-base", "--is-ancestor", "origin/main", `origin/${branch}`);
+});
+
+test("unrelated or unsuccessful events leave proposal branches untouched", () => {
+  const { work } = scenario();
+  const branch = proposal(work, 10, "20260919-plan.md", "plan", "2026-09-19");
+  advanceMain(work, () => addEntry(work, "20260919-design.md", "design", "2026-09-19"));
+  const before = git(work, "rev-parse", `origin/${branch}`);
+  for (const [name, payload] of [
+    ["push", { ref: "refs/heads/feature" }],
+    ["workflow_run", { action: "completed", workflow_run: { conclusion: "failure" } }],
+    ["workflow_run", { action: "completed", workflow_run: { conclusion: "cancelled" } }],
+    ["workflow_run", { action: "requested", workflow_run: { conclusion: "success" } }],
+    ["pull_request", { ref: "refs/heads/main" }],
+  ]) {
+    const result = refreshAction(work, name, payload,
+      [{ number: 10, head: { ref: branch, repo: { full_name: "owner/app" } } }]);
+    assert.equal(result.status, 0, result.stderr);
+    git(work, "fetch", "-q", "origin");
+    assert.equal(git(work, "rev-parse", `origin/${branch}`), before, name);
+  }
 });

@@ -231,12 +231,20 @@ Create `.github/workflows/refresh-narrative.yml` to do that automatically:
 ```yaml
 name: Refresh narrative proposals
 
+# Proposals are cut from their merge commit, so when another entry lands first the compiled
+# narrative collides. This merges the default branch into each open proposal and recompiles it.
+# A push refresh can finish before maintenance creates its proposal. Refresh again after
+# maintenance completes, with a manual recovery path for proposals that already missed a push.
 on:
   push:
     paths:
       - ".project-narrative.json"
       - "narrative/**"
       - "Narrative.md"
+  workflow_run:
+    workflows: ["Maintain project narrative"]
+    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -248,11 +256,16 @@ concurrency:
 
 jobs:
   refresh:
-    if: github.ref_name == github.event.repository.default_branch
+    if: >-
+      (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          # Always execute the trusted default-branch workflow, not a proposal's checkout.
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
       - uses: jamiemitchellconsultants/Narrative@main
         with:
@@ -260,7 +273,8 @@ jobs:
           mode: refresh
 ```
 
-On every push to the default branch that touches the narrative, `refresh` lists open pull requests
+After a narrative push, successful completion of `Maintain project narrative`, or a manual run,
+`refresh` lists open pull requests
 whose head is this repository's own `automation/narrative-pr-<number>` branch and, for each one:
 
 | Situation | Result |
@@ -276,8 +290,12 @@ Every pushed commit has passed `narrative check` before it is pushed. Because pu
 refreshed commit; the check inside `refresh` stands in for it. A push rejected because the branch
 moved during the run is reported as a warning and retried on the next push to the default branch.
 
-**Existing installations:** `narrative install` never overwrites files, so re-running it adds only
-this missing workflow. Or create the file above by hand.
+**Existing installations:** update the refresh workflow to the example above; `narrative install`
+never overwrites an existing file. The completion trigger closes a race where a push refresh sees
+no proposals while maintenance is still creating one from an older merge commit. Keep the workflow
+name in `workflow_run.workflows` aligned with your maintenance workflow name. The refresh checks out
+only the default branch and reads no artifacts or code from the completed run. Existing push-only
+workflows remain compatible, but do not receive the race fix until updated.
 
 ### 9. Add the PR-authoring template
 
@@ -532,8 +550,9 @@ branch in a custom runner, remove or rename that local branch before retrying.
 
 ### A narrative proposal PR has a merge conflict on `Narrative.md`
 
-Another entry merged first. If `refresh-narrative.yml` is installed it resolves this on the next
-push to the default branch that touches the narrative. To resolve it by hand, merge the default
+Another entry merged first. The refresh workflow repairs this after the next narrative push or
+successful maintenance completion. Use its **Run workflow** button to repair an existing proposal
+without waiting for another merge. To resolve it by hand, merge the default
 branch into the proposal branch, take either side of `Narrative.md`, run `narrative compile` and
 `narrative check`, and commit. Never reconcile the conflict markers.
 
