@@ -26,7 +26,7 @@ scaffolds:
 - `.github/workflows/maintain-narrative.yml` — post-merge capture on labelled, merged PRs
 - `.github/workflows/validate-narrative.yml` — deterministic PR validation
 - `.github/workflows/refresh-narrative.yml` — recompiles open proposals after the default branch
-  moves, so concurrent proposals never leave a hand-merge conflict in `Narrative.md`
+  moves and after maintenance completes, with manual refresh for existing conflicts in `Narrative.md`
 - `.github/pull_request_template.md` — the three narrative sections the processor consumes
 
 The command prints each path as `created` or `kept`, followed by the manual follow-ups below. Relay

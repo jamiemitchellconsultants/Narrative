@@ -246,12 +246,18 @@ jobs:
 
 # Proposals are cut from their merge commit, so when another entry lands first the compiled
 # narrative collides. This merges the default branch into each open proposal and recompiles it.
+# A push refresh can finish before maintenance creates its proposal. Refresh again after
+# maintenance completes, with a manual recovery path for proposals that already missed a push.
 on:
   push:
     paths:
       - ".project-narrative.json"
       - "narrative/**"
       - "Narrative.md"
+  workflow_run:
+    workflows: ["Maintain project narrative"]
+    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -263,11 +269,16 @@ concurrency:
 
 jobs:
   refresh:
-    if: github.ref_name == github.event.repository.default_branch
+    if: >-
+      (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          # Always execute the trusted default-branch workflow, not a proposal's checkout.
+          ref: \${{ github.event.repository.default_branch }}
           fetch-depth: 0
       - uses: ${ACTION_REF}
         with:
