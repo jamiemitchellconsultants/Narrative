@@ -138,6 +138,12 @@ export function compile(configPath = ".project-narrative.json", check = false) {
   return output;
 }
 
+// Cut to the length limit before trimming hyphens: trimming first lets the cut land just after a
+// hyphen, and createFragment rejects a slug that ends in one.
+export function slugify(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 72).replace(/^-+|-+$/g, "");
+}
+
 export function createFragment(config, entry) {
   let slug = entry.slug;
   if (!SLUG_RE.test(slug)) throw new Error("entry slug must be lower-case kebab-case");
