@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { createFragment, loadConfig, compile, summariseDecision } from "../bin/narrative.mjs";
+import { createFragment, loadConfig, compile, summariseDecision, slugify } from "../bin/narrative.mjs";
 
 const token = process.env.INPUT_GITHUB_TOKEN;
 const configPath = process.env.INPUT_CONFIG || ".project-narrative.json";
@@ -17,10 +17,6 @@ function fail(message) {
 function section(body, heading) {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return body.match(new RegExp(`(?:^|\\n)##\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`, "i"))?.[1]?.trim();
-}
-
-function slugify(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 72);
 }
 
 async function request(path, options = {}) {
